@@ -1,0 +1,36 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v1.0",
+    "signature": "da39a3ee5e6b4b0d3255bfef95601890afd80709"
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v1.0": {
+      "ex1/1.0.0": {
+        "dependencies": {
+          "Jakkes.WebSockets": "1.0.0"
+        },
+        "runtime": {
+          "ex1.dll": {}
+        }
+      },
+      "Jakkes.WebSockets/1.0.0": {
+        "runtime": {
+          "Jakkes.WebSockets.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "ex1/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Jakkes.WebSockets/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
