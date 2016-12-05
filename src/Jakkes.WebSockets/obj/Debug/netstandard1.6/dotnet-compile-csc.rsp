@@ -55,4 +55,5 @@
 -r:"C:\Users\Jakob\.nuget\packages\System.Xml.XDocument\4.0.11\ref\netstandard1.3\System.Xml.XDocument.dll"
 "C:\Users\Jakob\Documents\GitHub\Jakkes.WebSockets\src\Jakkes.WebSockets\Properties\AssemblyInfo.cs"
 "C:\Users\Jakob\Documents\GitHub\Jakkes.WebSockets\src\Jakkes.WebSockets\Server\Connection.cs"
+"C:\Users\Jakob\Documents\GitHub\Jakkes.WebSockets\src\Jakkes.WebSockets\Server\OpCode.cs"
 "C:\Users\Jakob\Documents\GitHub\Jakkes.WebSockets\src\Jakkes.WebSockets\Server\WebSocketServer.cs"

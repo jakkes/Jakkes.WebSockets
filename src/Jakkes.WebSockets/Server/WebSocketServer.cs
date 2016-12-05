@@ -10,8 +10,12 @@ using System.Threading.Tasks;
 
 namespace Jakkes.WebSockets.Server
 {
+    public delegate void WebSocketClientConnectedEventHandler(WebSocketServer source, Connection conn);
     public class WebSocketServer : IDisposable
     {
+
+        public event WebSocketClientConnectedEventHandler ClientConnected;
+
         private TcpListener _server;
         private List<Connection> _connections = new List<Connection>();
         public WebSocketServer(int port) : this(IPAddress.Any, port) { }
@@ -23,6 +27,13 @@ namespace Jakkes.WebSockets.Server
         {
             _server.Start();
             Task.Run(() => Listen());
+        }
+        
+        public void Broadcast(string message)
+        {
+            lock (_connections)
+                foreach (var conn in _connections)
+                    conn.Send(message);
         }
         private async void Listen()
         {
@@ -62,9 +73,12 @@ namespace Jakkes.WebSockets.Server
             stream.Write(Encoding.UTF8.GetBytes(response), 0, Encoding.UTF8.GetByteCount(response));
             stream.Flush();
 
-            _connections.Add(new Connection(conn));
+            Connection socket = new Connection(conn);
+            ClientConnected?.Invoke(this, socket);
+            onClientConnect(socket);
+            _connections.Add(socket);
         }
-
+        protected void onClientConnect(Connection conn) { }
         public void Dispose()
         {
             throw new NotImplementedException();
