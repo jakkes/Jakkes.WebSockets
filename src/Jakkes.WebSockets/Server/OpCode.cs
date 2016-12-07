@@ -1,6 +1,6 @@
 ﻿namespace Jakkes.WebSockets.Server
 {
-    public enum OpCode
+    internal enum OpCode
     {
         ContinuationFrame = 0x0,
         TextFrame = 0x1,

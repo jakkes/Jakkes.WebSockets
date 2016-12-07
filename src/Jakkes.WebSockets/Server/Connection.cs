@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Jakkes.WebSockets.Server
@@ -10,20 +11,47 @@ namespace Jakkes.WebSockets.Server
 
     public delegate void MessageReceivedEventHandler(Connection source, string data);
     public delegate void BinaryReceivedEventHandler(Connection source, byte[] data);
+    public delegate void WebSocketConnectionClosedEventHandler(Connection source);
+    public delegate void WebSocketStateChangedEventHandler(Connection source, WebSocketState state);
 
-    public class Connection : IDisposable
+    public class Connection
     {
 
         public event MessageReceivedEventHandler MessageReceived;
         public event BinaryReceivedEventHandler BinaryReceived;
+        public event WebSocketConnectionClosedEventHandler Closed;
+        public event WebSocketStateChangedEventHandler StateChanged;
 
+        public WebSocketState State
+        {
+            get { return _state; }
+            private set
+            {
+                _state = value;
+                onStateChanged(_state);
+                StateChanged?.Invoke(this, _state);
+            }
+        }
+        public string ID { get { return _id; } }
+
+        private string _id = new Guid().ToString();
+        private WebSocketState _state = WebSocketState.Open;
         private TcpClient _conn;
         private NetworkStream _stream;
         private string message = string.Empty;
         private List<byte> binary = new List<byte>();
         private OpCode currentOpCode;
 
-        internal Connection(TcpClient conn)
+        protected virtual void onMessageReceived(string data) { }
+        protected virtual void onBinaryReceived(byte[] data) { }
+        protected virtual void onStateChanged(WebSocketState state) { }
+        protected virtual void onClosed() { }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="conn">A TCP connection that has been upgraded to a websocket connection.</param>
+        public Connection(TcpClient conn)
         {
             if (!conn.Connected)
                 throw new ArgumentException("The connection is closed.");
@@ -31,12 +59,27 @@ namespace Jakkes.WebSockets.Server
             _stream = conn.GetStream();
             Task.Run(() => Read());
         }
-        public void Send(string message)
+        /// <summary>
+        /// Sends a string
+        /// </summary>
+        /// <param name="text">Message</param>
+        public void Send(string text)
         {
-            Send(Encoding.UTF8.GetBytes(message), OpCode.TextFrame);
+            _send(Encoding.UTF8.GetBytes(message), OpCode.TextFrame);
         }
-        public void Send(byte[] data, OpCode code)
+        /// <summary>
+        /// Sends binary
+        /// </summary>
+        /// <param name="binary">Data</param>
+        public void Send(byte[] binary)
         {
+            _send(binary, OpCode.BinaryFrame);
+        }
+        private void _send(byte[] data, OpCode code)
+        {
+            if (State != WebSocketState.Open)
+                throw new ConnectionClosedException();
+
             List<byte> bytes = new List<byte>();
             bytes.Add((byte)(0x80 + code));
             if (data.Length <= 125)
@@ -56,14 +99,6 @@ namespace Jakkes.WebSockets.Server
             _stream.Write(bytes.ToArray(), 0, bytes.Count);
             _stream.Write(data,0,data.Length);
             _stream.Flush();
-        }
-        protected void onMessageReceived(string data)
-        {
-
-        }
-        protected void onBinaryReceived(byte[] data)
-        {
-
         }
         private async Task<Frame> GetFrameInfo()
         {
@@ -105,12 +140,15 @@ namespace Jakkes.WebSockets.Server
 
             // Extract payload
             re.Payload = new byte[re.Length];
-            _stream.Read(re.Payload, 0, re.Payload.Length);
+            if (re.Length > 0)
+                _stream.Read(re.Payload, 0, re.Payload.Length);
 
             return re;
         }
         private async void Read()
         {
+            if (State != WebSocketState.Open)
+                return;
             try
             {
                 var frame = await GetFrameInfo();
@@ -124,10 +162,10 @@ namespace Jakkes.WebSockets.Server
                         HandleIncomingBinary(frame);
                         break;
                     case OpCode.ConnectionClose:
-                        HandleCloseRequest();
+                        HandleCloseRequest(frame);
                         break;
                     case OpCode.Ping:
-                        Pong();
+                        Pong(frame);
                         break;
                     case OpCode.ContinuationFrame:
                         if (currentOpCode == OpCode.TextFrame)
@@ -140,8 +178,8 @@ namespace Jakkes.WebSockets.Server
                         break;
                 }
             }
-            catch (UnmaskedMessageException) { Close("Received an unmasked message from the client."); }
-
+            catch (UnmaskedMessageException) { Close(); }
+            
             Task.Run(() => Read());
         }
         private void HandleIncomingBinary(Frame frame)
@@ -156,7 +194,6 @@ namespace Jakkes.WebSockets.Server
             else
                 currentOpCode = OpCode.BinaryFrame;
         }
-
         private void HandleIncomingText(Frame frame)
         {
             message += Encoding.UTF8.GetString(frame.UnmaskedData);
@@ -169,28 +206,42 @@ namespace Jakkes.WebSockets.Server
             else
                 currentOpCode = OpCode.TextFrame;
         }
-
-        private void HandleCloseRequest()
+        private void HandleCloseRequest(Frame frame)
         {
-            throw new NotImplementedException();
+            if (State != WebSocketState.Closing)
+                _send(frame.UnmaskedData, OpCode.ConnectionClose);
+            _shutdown();
         }
-        private void Pong()
+        private void Pong(Frame frame)
         {
-            throw new NotImplementedException("Pong not implemented");
+            _send(frame.UnmaskedData, OpCode.Pong);
         }
+        private void _shutdown()
+        {
+            _stream.Dispose();
+            _conn.Dispose();
+            State = WebSocketState.Closed;
+            onClosed();
+            Closed?.Invoke(this);
+        }
+        /// <summary>
+        /// Closes the connection. Connection enters closing state until it closes when Closed is invoked.
+        /// </summary>
         public void Close()
         {
-            Close("");
+            _send(new byte[0], OpCode.ConnectionClose);
+            State = WebSocketState.Closing;
         }
-        public void Close(string message)
+        /// <summary>
+        /// Closes the connection.
+        /// </summary>
+        /// <param name="hardquit">Set true if the connection should be abandoned instead of performing a clean exit.</param>
+        public void Close(bool hardquit)
         {
-            throw new NotImplementedException("Close");
+            Close();
+            if (hardquit)
+                _shutdown();
         }
-        public void Dispose()
-        {
-            throw new NotImplementedException();
-        }
-        
         private class Frame
         {
             public bool FIN { get; set; }
@@ -217,9 +268,14 @@ namespace Jakkes.WebSockets.Server
         }
     }
 
-    public class UnmaskedMessageException : Exception
+    public enum WebSocketState
     {
-
+        Open,
+        Closed,
+        Closing
     }
+
+    public class UnmaskedMessageException : Exception { }
+    public class ConnectionClosedException : Exception { }
 
 }
