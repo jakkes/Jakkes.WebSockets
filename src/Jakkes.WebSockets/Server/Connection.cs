@@ -9,19 +9,21 @@ namespace Jakkes.WebSockets.Server
 {
 
     public delegate void MessageReceivedEventHandler(Connection source, string data);
+    public delegate void BinaryReceivedEventHandler(Connection source, byte[] data);
 
     public class Connection : IDisposable
     {
 
         public event MessageReceivedEventHandler MessageReceived;
+        public event BinaryReceivedEventHandler BinaryReceived;
 
         private TcpClient _conn;
         private NetworkStream _stream;
-        private byte[] buffer = new byte[4096];
         private string message = string.Empty;
-        private OpCode previousOpcode;
+        private List<byte> binary = new List<byte>();
+        private OpCode currentOpCode;
 
-        public Connection(TcpClient conn)
+        internal Connection(TcpClient conn)
         {
             if (!conn.Connected)
                 throw new ArgumentException("The connection is closed.");
@@ -55,121 +57,169 @@ namespace Jakkes.WebSockets.Server
             _stream.Write(data,0,data.Length);
             _stream.Flush();
         }
-        private async void Read()
+        protected void onMessageReceived(string data)
         {
-            int read = await _stream.ReadAsync(buffer, 0, buffer.Length);
-            long length = 0;
+
+        }
+        protected void onBinaryReceived(byte[] data)
+        {
+
+        }
+        private async Task<Frame> GetFrameInfo()
+        {
+            var re = new Frame();
+
+            // Read until first 2 bytes are read
+            int read = 0;
+            byte[] buff = new byte[2];
+            read += await _stream.ReadAsync(buff, 0, buff.Length);
+            while (read < buff.Length)
+                read += await _stream.ReadAsync(buff, read, buff.Length - read);
+
+            // Check message is masked
+            if ((buff[1] >> 7) != 1)
+                throw new UnmaskedMessageException();
             
-            // Read first bit
-            bool FIN = buffer[0] >> 7 == 1;
+            // Check RSV1,2,3 are set 0
+            if ((buff[0] & 0x70) != 0)
+                throw new NotImplementedException("RSV1, RSV2, RSV3 must be set to 0.");
 
-            // Check message type and if it's a ping.
-            int opcode = buffer[0] & 0xF;
-            if(opcode == (int)OpCode.Ping)
-            {
-                Pong();
-                return;
-            }
+            // Extract opcode
+            re.OpCode = (OpCode)(buff[0] & 0xF);
+            
+            // Extract FIN
+            re.FIN = (buff[0] >> 7) == 1;
 
-            // Read bit 2-4
-            if (((buffer[0] >> 3) & 0xF) != 0) 
-                throw new NotImplementedException("Extensions not implemented");
-
-
-            // Get length of message
-            int len = buffer[1] & 0x7F;
-            if (len < 126)
-            {
-                length = len;
-            }
+            // Extract length
+            int len = buff[1] & 0x7F;
+            if (len < 126) re.Length = len;
             else if (len == 126)
-                length = (buffer[2] << 8) + buffer[3];
+                re.Length = (_stream.ReadByte() << 8) + _stream.ReadByte();
             else
                 for (int i = 0; i < 8; i++)
-                    length += (buffer[2 + i]) << (8 * (7 - i));
+                    re.Length += _stream.ReadByte() << (8 * (7 - i));
 
-            // Check if the message is masked
-            if (buffer[1] >> 7 != 1)
-                throw new NotImplementedException("No mask present. Connection must close.");
+            // Extract mask
+            re.Mask = new byte[4];
+            _stream.Read(re.Mask, 0, 4);
 
-            // Get masking key
-            byte[] mask = new byte[4];
-            int offset = 0;
-            if (len < 126) offset = 2;
-            else if (len == 126) offset = 4;
-            else offset = 10;
-            for (int j = 0; j < 4; offset++, j++)
-                mask[j] = buffer[offset];
+            // Extract payload
+            re.Payload = new byte[re.Length];
+            _stream.Read(re.Payload, 0, re.Payload.Length);
 
-            switch (opcode)
-            {
-                case (int)OpCode.ContinuationFrame:
-                    switch (previousOpcode)
-                    {
-                        case OpCode.TextFrame:
-                            HandleTextMessage(FIN, length, mask, offset);
-                            break;
-                    }
-                    break;
-
-
-                case (int)OpCode.TextFrame:
-                    previousOpcode = OpCode.TextFrame;
-                    HandleTextMessage(FIN, length, mask, offset);
-                    break;
-                    
-                default:
-                    throw new NotImplementedException("Unknown opcode. Connection must close.");
-
-            }
-            Task.Run(() => Read());
+            return re;
         }
-        private void Pong()
+        private async void Read()
         {
-            throw new NotImplementedException("Pong not implemented");
-        }
-        private void HandleTextMessage(bool FIN, long length, byte[] mask, int offset)
-        {
-            if(buffer.Length - offset > length)
-                message += Encoding.UTF8.GetString(UnMask(buffer,offset,(int)length,mask,0));
-            else
+            try
             {
-                long count = 0;
-                message += Encoding.UTF8.GetString(UnMask(buffer, offset, buffer.Length - offset, mask,0));
-                count += buffer.Length - offset;
-                while(count < length)
+                var frame = await GetFrameInfo();
+
+                switch (frame.OpCode)
                 {
-                    int read = _stream.Read(buffer, 0, buffer.Length);
-                    message += Encoding.UTF8.GetString(UnMask(buffer, 0, read, mask, (int)(count % 4)));
-                    count += read;
+                    case OpCode.TextFrame:
+                        HandleIncomingText(frame);
+                        break;
+                    case OpCode.BinaryFrame:
+                        HandleIncomingBinary(frame);
+                        break;
+                    case OpCode.ConnectionClose:
+                        HandleCloseRequest();
+                        break;
+                    case OpCode.Ping:
+                        Pong();
+                        break;
+                    case OpCode.ContinuationFrame:
+                        if (currentOpCode == OpCode.TextFrame)
+                            HandleIncomingText(frame);
+                        else
+                            HandleIncomingBinary(frame);
+                        break;
+                    default:
+                        Close();
+                        break;
                 }
             }
-            if (FIN)
+            catch (UnmaskedMessageException) { Close("Received an unmasked message from the client."); }
+
+            Task.Run(() => Read());
+        }
+        private void HandleIncomingBinary(Frame frame)
+        {
+            binary.AddRange(frame.UnmaskedData);
+            if (frame.FIN)
+            {
+                onBinaryReceived(binary.ToArray());
+                BinaryReceived?.Invoke(this, binary.ToArray());
+                binary.Clear();
+            }
+            else
+                currentOpCode = OpCode.BinaryFrame;
+        }
+
+        private void HandleIncomingText(Frame frame)
+        {
+            message += Encoding.UTF8.GetString(frame.UnmaskedData);
+            if (frame.FIN)
             {
                 onMessageReceived(message);
                 MessageReceived?.Invoke(this, message);
                 message = string.Empty;
             }
+            else
+                currentOpCode = OpCode.TextFrame;
         }
-        private byte[] UnMask(byte[] buffer, int offset, int count, byte[] mask, int shift)
-        {
-            var re = new byte[count];
-            for(int i = 0; i < count; i++)
-                re[i] = (byte)(buffer[i + offset] ^ mask[(i+shift) % 4]);
-            return re;
-        }
-        protected void onMessageReceived(string data)
-        {
 
+        private void HandleCloseRequest()
+        {
+            throw new NotImplementedException();
+        }
+        private void Pong()
+        {
+            throw new NotImplementedException("Pong not implemented");
         }
         public void Close()
         {
-
+            Close("");
+        }
+        public void Close(string message)
+        {
+            throw new NotImplementedException("Close");
         }
         public void Dispose()
         {
             throw new NotImplementedException();
         }
         
+        private class Frame
+        {
+            public bool FIN { get; set; }
+            public long Length { get; set; }
+            public byte[] Mask { get; set; }
+            public byte[] Payload { get; set; }
+            public OpCode OpCode { get; set; }
+            public byte[] UnmaskedData
+            {
+                get
+                {
+                    if(_unmaskedData == null)
+                    {
+                        var d = new byte[Payload.Length];
+                        for (int i = 0; i < Payload.Length; i++)
+                            d[i] = (byte)(Payload[i] ^ Mask[i % 4]);
+                        _unmaskedData = d;
+                    }
+                    return _unmaskedData;
+                }
+            }
+
+            private byte[] _unmaskedData;
+        }
     }
+
+    public class UnmaskedMessageException : Exception
+    {
+
+    }
+
 }
