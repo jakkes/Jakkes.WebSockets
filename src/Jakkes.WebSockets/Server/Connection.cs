@@ -34,7 +34,7 @@ namespace Jakkes.WebSockets.Server
         }
         public string ID { get { return _id; } }
 
-        private string _id = Guid.NewGuid().ToString();
+        private string _id;
         private WebSocketState _state = WebSocketState.Open;
         private TcpClient _conn;
         private NetworkStream _stream;
@@ -51,10 +51,11 @@ namespace Jakkes.WebSockets.Server
         /// 
         /// </summary>
         /// <param name="conn">A TCP connection that has been upgraded to a websocket connection.</param>
-        public Connection(TcpClient conn)
+        internal void Init(TcpClient conn, string id)
         {
             if (!conn.Connected)
                 throw new ArgumentException("The connection is closed.");
+            _id = id;
             _conn = conn;
             _stream = conn.GetStream();
             Task.Run(() => Read());

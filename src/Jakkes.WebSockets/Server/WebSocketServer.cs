@@ -55,7 +55,6 @@ namespace Jakkes.WebSockets.Server
         private TcpListener _server;
         
         private Dictionary<string,Connection> _connections = new Dictionary<string, Connection>();
-        
 
         #region Constructors
         public WebSocketServer(int port) : this(IPAddress.Any, port) { }
@@ -91,7 +90,6 @@ namespace Jakkes.WebSockets.Server
             if (hardquit)
                 Shutdown();
         }
-        
         #endregion
 
 
@@ -114,7 +112,12 @@ namespace Jakkes.WebSockets.Server
         {
             _handshake(conn);
 
-            Connection socket = new Connection(conn);
+            string id = Guid.NewGuid().ToString();
+            while (_connections.ContainsKey(id))
+                id = Guid.NewGuid().ToString();
+
+            Connection socket = new Connection();
+            socket.Init(conn, id);
             socket.Closed += Socket_Closed;
             socket.MessageReceived += onMessageReceived;
             socket.BinaryReceived += onBinaryReceived;
@@ -164,6 +167,7 @@ namespace Jakkes.WebSockets.Server
             stream.Write(Encoding.UTF8.GetBytes(response), 0, Encoding.UTF8.GetByteCount(response));
             stream.Flush();
         }
+        
     }
 
     public enum WebSocketServerState
