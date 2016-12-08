@@ -34,7 +34,7 @@ namespace Jakkes.WebSockets.Server
         }
         public string ID { get { return _id; } }
 
-        private string _id = new Guid().ToString();
+        private string _id = Guid.NewGuid().ToString();
         private WebSocketState _state = WebSocketState.Open;
         private TcpClient _conn;
         private NetworkStream _stream;
@@ -140,8 +140,9 @@ namespace Jakkes.WebSockets.Server
 
             // Extract payload
             re.Payload = new byte[re.Length];
-            if (re.Length > 0)
-                _stream.Read(re.Payload, 0, re.Payload.Length);
+            long count = 0;
+            while(count < re.Length)
+                count += _stream.Read(re.Payload, 0, re.Payload.Length);
 
             return re;
         }
