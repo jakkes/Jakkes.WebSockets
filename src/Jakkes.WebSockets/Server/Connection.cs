@@ -142,7 +142,7 @@ namespace Jakkes.WebSockets.Server
             re.Payload = new byte[re.Length];
             long count = 0;
             while(count < re.Length)
-                count += _stream.Read(re.Payload, 0, re.Payload.Length);
+                count += _stream.Read(re.Payload, (int)count, (int)(re.Length - count));
 
             return re;
         }
