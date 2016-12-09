@@ -1,2 +1,4 @@
-# Jakkes.WebSockets
-WebSockets for .NET Core. Work in progress.
+## Jakkes.WebSockets
+# WebSockets for .NET Core.
+
+Any bugs / features missing that you need just contact me.
