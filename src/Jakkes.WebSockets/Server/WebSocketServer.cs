@@ -91,6 +91,10 @@ namespace Jakkes.WebSockets.Server
             if (hardquit)
                 Shutdown();
         }
+        public Connection GetConnection(string ID)
+        {
+            return _connections[ID];
+        }
         #endregion
 
         #region Private methods
@@ -111,24 +115,26 @@ namespace Jakkes.WebSockets.Server
         }
         private void HandleConnection(TcpClient conn)
         {
-            
-            string p = _handshake(conn);
+            try
+            {
+                _handshake(conn);
 
-            string id = Guid.NewGuid().ToString();
-            while (_connections.ContainsKey(id))
-                id = Guid.NewGuid().ToString();
+                string id = Guid.NewGuid().ToString();
+                while (_connections.ContainsKey(id))
+                    id = Guid.NewGuid().ToString();
 
-            Connection socket = new Connection();
-            socket.Init(conn, id);
-            socket.Closed += Socket_Closed;
-            socket.MessageReceived += onMessageReceived;
-            socket.BinaryReceived += onBinaryReceived;
-            
-            lock (_connections)
-                _connections.Add(socket.ID, socket);
+                Connection socket = new Connection();
+                socket.Init(conn, id);
+                socket.Closed += Socket_Closed;
+                socket.MessageReceived += onMessageReceived;
+                socket.BinaryReceived += onBinaryReceived;
 
-            ClientConnected?.Invoke(this, socket);
-            onClientConnect(socket);
+                lock (_connections)
+                    _connections.Add(socket.ID, socket);
+
+                ClientConnected?.Invoke(this, socket);
+                onClientConnect(socket);
+            } catch (Exception) { }
         }
         private void Socket_Closed(Connection source)
         {
@@ -170,7 +176,8 @@ namespace Jakkes.WebSockets.Server
             response += "Sec-WebSocket-Accept: " + acceptKey + Environment.NewLine + Environment.NewLine;
             if (dict.ContainsKey("Protocol"))
                 response += "Sec-WebSocket-Protocol: " + dict["Protocol"];
-            stream.Write(Encoding.UTF8.GetBytes(response), 0, Encoding.UTF8.GetByteCount(response));
+            var bytes = Encoding.UTF8.GetBytes(response);
+            stream.Write(bytes, 0, bytes.Length);
             stream.Flush();
         }
         #endregion
