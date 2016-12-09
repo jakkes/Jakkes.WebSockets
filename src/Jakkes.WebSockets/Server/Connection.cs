@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -97,6 +98,7 @@ namespace Jakkes.WebSockets.Server
                 for (int i = 0; i < 8; i++)
                     bytes.Add((byte)(0xFF & ((long)(data.Length) >> (8 * (7 - i)))));
             }
+            
             _stream.Write(bytes.ToArray(), 0, bytes.Count);
             _stream.Write(data,0,data.Length);
             _stream.Flush();

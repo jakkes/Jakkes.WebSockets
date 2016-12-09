@@ -56,6 +56,7 @@ namespace Jakkes.WebSockets.Server
         
         private Dictionary<string,Connection> _connections = new Dictionary<string, Connection>();
 
+
         #region Constructors
         public WebSocketServer(int port) : this(IPAddress.Any, port) { }
         public WebSocketServer(IPAddress ip, int port)
@@ -92,7 +93,7 @@ namespace Jakkes.WebSockets.Server
         }
         #endregion
 
-
+        #region Private methods
         private void Shutdown()
         {
             _server.Stop();
@@ -110,7 +111,8 @@ namespace Jakkes.WebSockets.Server
         }
         private void HandleConnection(TcpClient conn)
         {
-            _handshake(conn);
+            
+            string p = _handshake(conn);
 
             string id = Guid.NewGuid().ToString();
             while (_connections.ContainsKey(id))
@@ -148,6 +150,8 @@ namespace Jakkes.WebSockets.Server
             {
                 if (line.StartsWith("Sec-WebSocket-Key"))
                     dict.Add("Key", line.Split(':')[1].Trim());
+                if (line.StartsWith("GET"))
+                    dict.Add("Protocol", line.Split(' ')[1].Trim().Substring(1));
             }
 
             if (!dict.ContainsKey("Key"))
@@ -164,10 +168,12 @@ namespace Jakkes.WebSockets.Server
             response += "Upgrade: websocket" + Environment.NewLine;
             response += "Connection: Upgrade" + Environment.NewLine;
             response += "Sec-WebSocket-Accept: " + acceptKey + Environment.NewLine + Environment.NewLine;
+            if (dict.ContainsKey("Protocol"))
+                response += "Sec-WebSocket-Protocol: " + dict["Protocol"];
             stream.Write(Encoding.UTF8.GetBytes(response), 0, Encoding.UTF8.GetByteCount(response));
             stream.Flush();
         }
-        
+        #endregion
     }
 
     public enum WebSocketServerState
