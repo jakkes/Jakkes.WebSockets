@@ -173,9 +173,10 @@ namespace Jakkes.WebSockets.Server
             string response = "HTTP/1.1 101 Switching Protocols" + Environment.NewLine;
             response += "Upgrade: websocket" + Environment.NewLine;
             response += "Connection: Upgrade" + Environment.NewLine;
-            response += "Sec-WebSocket-Accept: " + acceptKey + Environment.NewLine + Environment.NewLine;
-            if (dict.ContainsKey("Protocol"))
-                response += "Sec-WebSocket-Protocol: " + dict["Protocol"];
+            response += "Sec-WebSocket-Accept: " + acceptKey + Environment.NewLine;
+            if (dict.ContainsKey("Protocol") && !string.IsNullOrEmpty(dict["Protocol"]))
+                response += "Sec-WebSocket-Protocol: " + dict["Protocol"] + Environment.NewLine;
+            response += Environment.NewLine;
             var bytes = Encoding.UTF8.GetBytes(response);
             stream.Write(bytes, 0, bytes.Length);
             stream.Flush();

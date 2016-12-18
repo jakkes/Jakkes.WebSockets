@@ -98,12 +98,14 @@ namespace Jakkes.WebSockets.Server
                 for (int i = 0; i < 8; i++)
                     bytes.Add((byte)(0xFF & ((long)(data.Length) >> (8 * (7 - i)))));
             }
+            bytes.AddRange(data);
             try
             {
                 _stream.Write(bytes.ToArray(), 0, bytes.Count);
-                _stream.Write(data, 0, data.Length);
                 _stream.Flush();
-            } catch (Exception) { Close(true); }
+            }
+            catch (IOException) { }
+            catch (Exception) { Close(true); }
         }
         private async Task<Frame> GetFrameInfo()
         {
