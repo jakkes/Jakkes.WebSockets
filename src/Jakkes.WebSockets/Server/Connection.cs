@@ -67,7 +67,7 @@ namespace Jakkes.WebSockets.Server
         /// <param name="text">Message</param>
         public void Send(string text)
         {
-            _send(Encoding.UTF8.GetBytes(message), OpCode.TextFrame);
+            _send(Encoding.UTF8.GetBytes(text), OpCode.TextFrame);
         }
         /// <summary>
         /// Sends binary
