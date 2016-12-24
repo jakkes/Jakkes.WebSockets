@@ -42,12 +42,7 @@ namespace Jakkes.WebSockets.Server
         private string message = string.Empty;
         private List<byte> binary = new List<byte>();
         private OpCode currentOpCode;
-
-        protected virtual void onMessageReceived(string data) { }
-        protected virtual void onBinaryReceived(byte[] data) { }
-        protected virtual void onStateChanged(WebSocketState state) { }
-        protected virtual void onClosed() { }
-
+        
         /// <summary>
         /// 
         /// </summary>
