@@ -22,6 +22,7 @@ namespace Jakkes.WebSockets.Server
         public event BinaryReceivedEventHandler BinaryReceived;
         public event WebSocketConnectionClosedEventHandler Closed;
         public event WebSocketStateChangedEventHandler StateChanged;
+        public event EventHandler MessageSent;
 
         public WebSocketState State
         {
@@ -29,7 +30,6 @@ namespace Jakkes.WebSockets.Server
             private set
             {
                 _state = value;
-                onStateChanged(_state);
                 StateChanged?.Invoke(this, _state);
             }
         }
@@ -42,6 +42,8 @@ namespace Jakkes.WebSockets.Server
         private string message = string.Empty;
         private List<byte> binary = new List<byte>();
         private OpCode currentOpCode;
+        private bool _sending = false;
+        private Queue<RespondFrame> respondFrames = new Queue<RespondFrame>();
         
         /// <summary>
         /// 
@@ -60,6 +62,7 @@ namespace Jakkes.WebSockets.Server
         /// Sends a string
         /// </summary>
         /// <param name="text">Message</param>
+        /// <exception cref="ConnectionBusyException">Occurs when the socket is busy sending another message.</exception>
         public void Send(string text)
         {
             _send(Encoding.UTF8.GetBytes(text), OpCode.TextFrame);
@@ -68,14 +71,23 @@ namespace Jakkes.WebSockets.Server
         /// Sends binary
         /// </summary>
         /// <param name="binary">Data</param>
+        /// <exception cref="ConnectionBusyException">Occurs when the socket is busy sending another message.</exception>
         public void Send(byte[] binary)
         {
             _send(binary, OpCode.BinaryFrame);
         }
-        private void _send(byte[] data, OpCode code)
+        private void _send(byte[] data, OpCode code, bool recursive = false)
         {
-            if (State != WebSocketState.Open)
-                throw new ConnectionClosedException();
+            if (!recursive)
+            {
+                if (State != WebSocketState.Open)
+                    if (State != WebSocketState.Closing && code != OpCode.ConnectionClose)
+                        throw new ConnectionClosedException();
+                if (_sending)
+                    throw new ConnectionBusyException();
+
+                _sending = true;
+            }
 
             List<byte> bytes = new List<byte>();
             bytes.Add((byte)(0x80 + code));
@@ -98,9 +110,25 @@ namespace Jakkes.WebSockets.Server
             {
                 _stream.Write(bytes.ToArray(), 0, bytes.Count);
                 _stream.Flush();
+
+                if (!recursive)
+                {
+                    while (respondFrames.Count > 0)
+                    {
+                        var frame = respondFrames.Dequeue();
+                        _send(frame.Data, frame.opCode, true);
+                        frame.actionOnComplete();
+                    }
+                }
+
+                if (!recursive)
+                    MessageSent?.Invoke(this, null);
             }
             catch (IOException) { }
             catch (Exception) { Close(true); }
+
+            if (!recursive)
+                _sending = false;
         }
         private async Task<Frame> GetFrameInfo()
         {
@@ -190,7 +218,6 @@ namespace Jakkes.WebSockets.Server
             binary.AddRange(frame.UnmaskedData);
             if (frame.FIN)
             {
-                onBinaryReceived(binary.ToArray());
                 BinaryReceived?.Invoke(this, binary.ToArray());
                 binary.Clear();
             }
@@ -202,7 +229,6 @@ namespace Jakkes.WebSockets.Server
             message += Encoding.UTF8.GetString(frame.UnmaskedData);
             if (frame.FIN)
             {
-                onMessageReceived(message);
                 MessageReceived?.Invoke(this, message);
                 message = string.Empty;
             }
@@ -212,19 +238,36 @@ namespace Jakkes.WebSockets.Server
         private void HandleCloseRequest(Frame frame)
         {
             if (State != WebSocketState.Closing)
-                _send(frame.UnmaskedData, OpCode.ConnectionClose);
+            {
+                State = WebSocketState.Closing;
+                try
+                {
+                    _send(frame.UnmaskedData, OpCode.ConnectionClose);
+                }
+                catch (ConnectionBusyException)
+                {
+                    respondFrames.Clear();
+                    respondFrames.Enqueue(new RespondFrame(frame.UnmaskedData, OpCode.ConnectionClose, _shutdown));
+                    return;
+                }
+            }
             _shutdown();
         }
         private void Pong(Frame frame)
         {
-            _send(frame.UnmaskedData, OpCode.Pong);
+            try
+            {
+                _send(frame.UnmaskedData, OpCode.Pong);
+            } catch (ConnectionBusyException)
+            {
+                respondFrames.Enqueue(new RespondFrame(frame.UnmaskedData, OpCode.Pong));
+            }
         }
         private void _shutdown()
         {
             _stream.Dispose();
             _conn.Dispose();
             State = WebSocketState.Closed;
-            onClosed();
             Closed?.Invoke(this);
         }
         /// <summary>
@@ -232,8 +275,14 @@ namespace Jakkes.WebSockets.Server
         /// </summary>
         public void Close()
         {
-            _send(new byte[0], OpCode.ConnectionClose);
-            State = WebSocketState.Closing;
+            try
+            {
+                _send(new byte[0], OpCode.ConnectionClose);
+                State = WebSocketState.Closing;
+            } catch (ConnectionBusyException)
+            {
+                respondFrames.Enqueue(new RespondFrame(new byte[0], OpCode.ConnectionClose, new Action(() => { State = WebSocketState.Closing; })));
+            }
         }
         /// <summary>
         /// Closes the connection.
@@ -269,6 +318,24 @@ namespace Jakkes.WebSockets.Server
 
             private byte[] _unmaskedData;
         }
+
+        private class RespondFrame
+        {
+            public byte[] Data { get; set; }
+            public OpCode opCode { get; set; }
+            public Action actionOnComplete { get; set; }
+            public RespondFrame() { }
+            public RespondFrame(byte[] data, OpCode opcode)
+            {
+                Data = data;
+                opCode = opcode;
+            }
+            public RespondFrame(byte[] data, OpCode opcode, Action onComplete)
+                : this(data, opcode)
+            {
+                actionOnComplete = onComplete;
+            }
+        }
     }
 
     public enum WebSocketState
@@ -280,5 +347,5 @@ namespace Jakkes.WebSockets.Server
 
     public class UnmaskedMessageException : Exception { }
     public class ConnectionClosedException : Exception { }
-
+    public class ConnectionBusyException : Exception { }
 }
