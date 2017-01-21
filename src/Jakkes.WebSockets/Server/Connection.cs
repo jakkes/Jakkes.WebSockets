@@ -124,7 +124,7 @@ namespace Jakkes.WebSockets.Server
                 if (!recursive)
                     MessageSent?.Invoke(this, null);
             }
-            catch (IOException) { }
+            catch (IOException) { throw new ConnectionClosedException(); }
             catch (Exception) { Close(true); }
 
             if (!recursive)
