@@ -2,4 +2,4 @@
 
 Nuget installation:
 
-`Install-Paclage Jakkes.WebSockets`
+`Install-Package Jakkes.WebSockets`
