@@ -34,6 +34,7 @@ namespace Jakkes.WebSockets.Server
             }
         }
         public string ID { get { return _id; } }
+        public bool RetryOnConnectionBusy { get; set; } = true;
 
         private string _id;
         private WebSocketState _state = WebSocketState.Open;

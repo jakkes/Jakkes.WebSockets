@@ -51,11 +51,21 @@ namespace Jakkes.WebSockets.Server
                     return _connections.Values.AsEnumerable();
             }
         }
-
+        public bool RetryOnConnectionBusy
+        {
+            get { return _retryOnConnectionBusy; }
+            set
+            {
+                _retryOnConnectionBusy = value;
+                foreach (var conn in Connections)
+                    conn.RetryOnConnectionBusy = value;
+            }
+        };
+        private bool _retryOnConnectionBusy = true;
         private TcpListener _server;
         
         private Dictionary<string,Connection> _connections = new Dictionary<string, Connection>();
-
+        
 
         #region Constructors
         public WebSocketServer(int port) : this(IPAddress.Any, port) { }
@@ -124,6 +134,7 @@ namespace Jakkes.WebSockets.Server
                     id = Guid.NewGuid().ToString();
 
                 Connection socket = new Connection();
+                socket.RetryOnConnectionBusy = RetryOnConnectionBusy;
                 socket.Init(conn, id);
                 socket.Closed += Socket_Closed;
                 socket.MessageReceived += onMessageReceived;
