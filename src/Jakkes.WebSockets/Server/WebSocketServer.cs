@@ -51,19 +51,19 @@ namespace Jakkes.WebSockets.Server
                     return _connections.Values.AsEnumerable();
             }
         }
+        /// <summary>
+        /// If connection is busy attempt to resend until message is sent. Changing this setting only affects new connections.
+        /// </summary>
         public bool RetryOnConnectionBusy
         {
             get { return _retryOnConnectionBusy; }
             set
             {
                 _retryOnConnectionBusy = value;
-                foreach (var conn in Connections)
-                    conn.RetryOnConnectionBusy = value;
             }
-        };
+        }
         private bool _retryOnConnectionBusy = true;
         private TcpListener _server;
-        
         private Dictionary<string,Connection> _connections = new Dictionary<string, Connection>();
         
 
