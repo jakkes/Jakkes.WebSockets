@@ -133,7 +133,8 @@ namespace Jakkes.WebSockets.Server
 
         private void Close()
         {
-            throw new NotImplementedException();
+            SendPrioritized(new ServerMessage(new byte[0],OpCode.ConnectionClose));
+            State = ConnectionState.Closing;
         }
 
         private void HandleFrame(Frame frame)
@@ -176,7 +177,7 @@ namespace Jakkes.WebSockets.Server
 
         private void Pong(Frame frame)
         {
-            throw new NotImplementedException();
+            SendPrioritized(new ServerMessage(frame.UnmaskedData,OpCode.Pong));
         }
 
         private void HandleCloseRequest(Frame frame)
