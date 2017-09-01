@@ -1,4 +1,5 @@
 ﻿using System;
+using Jakkes.WebSockets.Server;
 
 namespace EchoExample
 {
@@ -6,7 +7,24 @@ namespace EchoExample
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            int port = 8080;
+            var srv = new Server(port);
+            srv.Start();
+            Console.WriteLine("Started echo service on port " + port);
+            Console.Read();
+        }
+    }
+
+    class Server : WebSocketServer{
+        public Server(int port) : base(port){
+
+        }
+
+        protected override void OnClientConnected(Connection client){
+            client.TextReceived += (o,e) => {
+                Console.WriteLine(e);
+                client.Send(e);
+            };
         }
     }
 }

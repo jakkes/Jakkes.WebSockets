@@ -177,33 +177,28 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Jakob Stigenberg\\.nuget\\packages\\": {},
-    "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder": {}
+    "/Users/LouiseAK/.nuget/packages/": {},
+    "/usr/local/share/dotnet/sdk/NuGetFallbackFolder": {}
   },
   "project": {
     "version": "1.0.0",
-    "restoreSettings": {
-      "hideWarningsAndErrors": true
-    },
     "restore": {
-      "projectUniqueName": "C:\\Users\\Jakob Stigenberg\\Documents\\Jakkes.WebSockets\\Jakkes.WebSockets\\Jakkes.WebSockets.csproj",
+      "projectUniqueName": "/Users/LouiseAK/Documents/Jakob/GitHub/Jakkes.WebSockets/Jakkes.WebSockets/Jakkes.WebSockets.csproj",
       "projectName": "Jakkes.WebSockets",
-      "projectPath": "C:\\Users\\Jakob Stigenberg\\Documents\\Jakkes.WebSockets\\Jakkes.WebSockets\\Jakkes.WebSockets.csproj",
-      "packagesPath": "C:\\Users\\Jakob Stigenberg\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Jakob Stigenberg\\Documents\\Jakkes.WebSockets\\Jakkes.WebSockets\\obj\\",
+      "projectPath": "/Users/LouiseAK/Documents/Jakob/GitHub/Jakkes.WebSockets/Jakkes.WebSockets/Jakkes.WebSockets.csproj",
+      "packagesPath": "/Users/LouiseAK/.nuget/packages/",
+      "outputPath": "/Users/LouiseAK/Documents/Jakob/GitHub/Jakkes.WebSockets/Jakkes.WebSockets/obj/",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
-        "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
+        "/usr/local/share/dotnet/sdk/NuGetFallbackFolder"
       ],
       "configFilePaths": [
-        "C:\\Users\\Jakob Stigenberg\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        "/Users/LouiseAK/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "netstandard2.0"
       ],
       "sources": {
-        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {

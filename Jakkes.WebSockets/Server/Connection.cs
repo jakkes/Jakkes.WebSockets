@@ -45,13 +45,8 @@ namespace Jakkes.WebSockets.Server
         private Queue<ServerMessage> _queue = new Queue<ServerMessage>();
         private Queue<ServerMessage> _prioQueue = new Queue<ServerMessage>();
 
-        public int DefaultRetryCount { get; set; }
-        
-        internal Connection(TcpClient conn) : this(conn, 0) { }
-
-        internal Connection(TcpClient conn, int defaultRetryCount)
+        internal Connection(TcpClient conn)
         {
-            DefaultRetryCount = defaultRetryCount;
             _conn = conn;
             _stream = conn.GetStream();
             _handshake();
@@ -87,6 +82,7 @@ namespace Jakkes.WebSockets.Server
                     _writeToStream(msg);
                     MessageSent?.Invoke(this, msg);
                 }
+                Thread.Sleep(1);
             }
         }
 
