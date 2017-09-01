@@ -138,20 +138,20 @@ namespace Jakkes.WebSockets.Server
 
         private void HandleFrame(Frame frame)
         {
-            binary.AddRange(frame.UnmaskedData);
-
             if (frame.FIN)
             {
                 switch (frame.OpCode)
                 {
                     case OpCode.TextFrame:
+                        binary.AddRange(frame.UnmaskedData);
                         TextReceived?.Invoke(this, Encoding.UTF8.GetString(binary.ToArray()));
                         break;
                     case OpCode.BinaryFrame:
+                        binary.AddRange(frame.UnmaskedData);
                         BinaryReceived?.Invoke(this, binary.ToArray());
                         break;
                     case OpCode.ConnectionClose:
-                        HandleCloseRequest();
+                        HandleCloseRequest(frame);
                         break;
                     case OpCode.Ping:
                         Pong(frame);
@@ -169,6 +169,7 @@ namespace Jakkes.WebSockets.Server
                 binary.Clear();
             } else
             {
+                binary.AddRange(frame.UnmaskedData);
                 currentOpCode = frame.OpCode;
             }
         }
@@ -178,9 +179,22 @@ namespace Jakkes.WebSockets.Server
             throw new NotImplementedException();
         }
 
-        private void HandleCloseRequest()
+        private void HandleCloseRequest(Frame frame)
         {
-            throw new NotImplementedException();
+            if(State != ConnectionState.Closing){
+                State = ConnectionState.Closing;
+                MessageSent += (o,e) => {
+                    if(e.opCode == OpCode.ConnectionClose)
+                        _shutdown();
+                };
+                SendPrioritized(new ServerMessage(frame.UnmaskedData,OpCode.ConnectionClose));
+            }
+        }
+
+        private void _shutdown(){
+            _stream.Dispose();
+            _conn.Dispose();
+            State = ConnectionState.Closed;   
         }
 
         private async Task<Frame> GetFrame()
