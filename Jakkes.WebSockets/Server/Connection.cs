@@ -70,6 +70,7 @@ namespace Jakkes.WebSockets.Server
 
         private void _sendWorker(CancellationToken cancellationToken)
         {
+            // TODO Create async queue to be able to skip this ugly mess of while(true) & Sleep(1). Terrible !?
             while(State == ConnectionState.Open && !cancellationToken.IsCancellationRequested)
             {
                 if(_prioQueue.Count > 0)
