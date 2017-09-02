@@ -54,6 +54,7 @@ namespace Jakkes.WebSockets.Server
             State = ConnectionState.Open;
 
             Read();
+            Task.Run(() => _sendWorker(new CancellationToken()));
         }
 
         public void Send(string text) => Send(new ServerMessage(text));
@@ -279,7 +280,6 @@ namespace Jakkes.WebSockets.Server
             var bytes = Encoding.UTF8.GetBytes(response);
             _stream.Write(bytes, 0, bytes.Length);
             _stream.Flush();
-            reader.Dispose();
         }
 
         private class Frame
