@@ -47,7 +47,13 @@ namespace Jakkes.WebSockets.Server
             
             State = ServerState.Open;
         }
-
+        public void Broadcast(ServerMessage msg)
+        {
+            foreach (var conn in Connections)
+                conn.Send(msg);
+        }
+        public void Broadcast(string text) => Broadcast(new ServerMessage(text));
+        public void Broadcast(byte[] binary) => Broadcast(new ServerMessage(binary));
         private async void awaitConnection()
         {
             var conn = await _server.AcceptTcpClientAsync();

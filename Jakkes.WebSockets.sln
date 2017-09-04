@@ -8,6 +8,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Jakkes.WebSockets.Test", "J
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EchoExample", "EchoExample\EchoExample.csproj", "{85279D23-9F3E-4C7E-986B-8FB79141F325}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatExample", "ChatExample\ChatExample.csproj", "{9CEC32C9-5EC2-423B-B0EC-D355B4201F7E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -54,6 +56,18 @@ Global
 		{85279D23-9F3E-4C7E-986B-8FB79141F325}.Release|x64.Build.0 = Release|x64
 		{85279D23-9F3E-4C7E-986B-8FB79141F325}.Release|x86.ActiveCfg = Release|x86
 		{85279D23-9F3E-4C7E-986B-8FB79141F325}.Release|x86.Build.0 = Release|x86
+		{9CEC32C9-5EC2-423B-B0EC-D355B4201F7E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9CEC32C9-5EC2-423B-B0EC-D355B4201F7E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9CEC32C9-5EC2-423B-B0EC-D355B4201F7E}.Debug|x64.ActiveCfg = Debug|x64
+		{9CEC32C9-5EC2-423B-B0EC-D355B4201F7E}.Debug|x64.Build.0 = Debug|x64
+		{9CEC32C9-5EC2-423B-B0EC-D355B4201F7E}.Debug|x86.ActiveCfg = Debug|x86
+		{9CEC32C9-5EC2-423B-B0EC-D355B4201F7E}.Debug|x86.Build.0 = Debug|x86
+		{9CEC32C9-5EC2-423B-B0EC-D355B4201F7E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9CEC32C9-5EC2-423B-B0EC-D355B4201F7E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9CEC32C9-5EC2-423B-B0EC-D355B4201F7E}.Release|x64.ActiveCfg = Release|x64
+		{9CEC32C9-5EC2-423B-B0EC-D355B4201F7E}.Release|x64.Build.0 = Release|x64
+		{9CEC32C9-5EC2-423B-B0EC-D355B4201F7E}.Release|x86.ActiveCfg = Release|x86
+		{9CEC32C9-5EC2-423B-B0EC-D355B4201F7E}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

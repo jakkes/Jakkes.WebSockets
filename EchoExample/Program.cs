@@ -23,6 +23,7 @@ namespace EchoExample
         protected override void OnClientConnected(Connection client){
             client.TextReceived += (o,e) => {
                 Console.WriteLine(e);
+                System.Threading.Thread.Sleep(500);
                 client.Send(e);
             };
         }
