@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Linq;
 using System.Threading.Tasks;
 using System;
+using System.Threading;
 
 namespace Jakkes.WebSockets.Server
 {
@@ -29,7 +30,7 @@ namespace Jakkes.WebSockets.Server
 
         private TcpListener _server;
 
-        public IEnumerable<Connection> Connections { get { return _connections.AsEnumerable(); } }
+        public IEnumerable<Connection> Connections { get { return _connections.ToArray(); } }
         private HashSet<Connection> _connections = new HashSet<Connection>();
         
         public WebSocketServer(int port) : this(IPAddress.Any, port) { }
@@ -46,6 +47,25 @@ namespace Jakkes.WebSockets.Server
             Task.Run(() => awaitConnection());
             
             State = ServerState.Open;
+        }
+        public void Close() => Close(-1);
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="timeout">Milliseconds before a KILL-signal is sent. -1 will send no KILL-signal</param>
+        public void Close(int timeout)
+        {
+            State = ServerState.Closing;
+            foreach (var conn in Connections)
+                conn.Close();
+
+            if (timeout > 0)
+                Task.Run(() =>
+                {
+                    Thread.Sleep(timeout);
+                    if (Connections.Count() > 0)
+                        Kill();
+                });
         }
         public void Broadcast(ServerMessage msg)
         {
@@ -68,6 +88,7 @@ namespace Jakkes.WebSockets.Server
             try
             {
                 var client = new Connection(conn);
+                client.StateChanged += Client_StateChanged;
                 _connections.Add(client);
 
                 ClientConnected?.Invoke(this, client);
@@ -79,6 +100,24 @@ namespace Jakkes.WebSockets.Server
             }
         }
 
+        private void Client_StateChanged(Connection conn, ConnectionState state)
+        {
+            if (state == ConnectionState.Closed)
+            {
+                _connections.Remove(conn);
+                if (State == ServerState.Closing && _connections.Count == 0)
+                    _shutdown();
+            }
+        }
+        public void Kill()
+        {
+            foreach (var conn in Connections)
+                conn.Kill();
+        }
+        private void _shutdown()
+        {
+            _server.Stop();
+        }
         public event ServerStateChangedEventHandler StateChanged;
         protected virtual void OnStateChanged(ServerState newState) { }
         public event ClientConnectedEventHandler ClientConnected;
