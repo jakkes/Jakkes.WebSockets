@@ -1,4 +1,5 @@
-﻿using System;
+﻿using AwaitableQueue;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
@@ -42,8 +43,7 @@ namespace Jakkes.WebSockets.Server
         private OpCode currentOpCode;
         private List<byte> binary = new List<byte>();
 
-        private Queue<ServerMessage> _queue = new Queue<ServerMessage>();
-        private Queue<ServerMessage> _prioQueue = new Queue<ServerMessage>();
+        private AsyncPrioQueue<ServerMessage> _queue = new AsyncPrioQueue<ServerMessage>();
 
         internal Connection(TcpClient conn)
         {
@@ -53,7 +53,7 @@ namespace Jakkes.WebSockets.Server
 
             State = ConnectionState.Open;
 
-            Read();
+            Task.Run(() => Read());
             Task.Run(() => _sendWorker(new CancellationToken()));
         }
 
@@ -65,27 +65,19 @@ namespace Jakkes.WebSockets.Server
         }
         private void SendPrioritized(ServerMessage msg)
         {
-            _prioQueue.Enqueue(msg);
+            _queue.EnqueuePrioritized(msg);
         }
 
-        private void _sendWorker(CancellationToken cancellationToken)
+        private async void _sendWorker(CancellationToken cancellationToken)
         {
-            // TODO Create async queue to be able to skip this ugly mess of while(true) & Sleep(1). Terrible !?
-            while(State == ConnectionState.Open && !cancellationToken.IsCancellationRequested)
+            if (State == ConnectionState.Open && !cancellationToken.IsCancellationRequested)
             {
-                if(_prioQueue.Count > 0)
-                {
-                    var msg = _prioQueue.Dequeue();
-                    _writeToStream(msg);
-                    MessageSent?.Invoke(this, msg);
-                } else if (_queue.Count > 0)
-                {
-                    var msg = _queue.Dequeue();
-                    _writeToStream(msg);
-                    MessageSent?.Invoke(this, msg);
-                }
-                Thread.Sleep(1);
+                ServerMessage msg = await _queue.DequeueAsync();
+                _writeToStream(msg);
+                MessageSent?.Invoke(this, msg);
             }
+
+            Task.Run(() => _sendWorker(cancellationToken));
         }
 
         private void _writeToStream(ServerMessage msg)
