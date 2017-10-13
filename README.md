@@ -5,10 +5,10 @@ A WebSocket server for .NET Core written in C#.
 ## Installation
 
 ### .NET CLI
-`dotnet add package Jakkes.WebSockets --version 2.0.0-alpha`
+`dotnet add package Jakkes.WebSockets --version 2.0.0-beta`
 
 ### Package Manager
-`Install-Package Jakkes.WebSockets -Version 2.0.0-alpha`
+`Install-Package Jakkes.WebSockets -Version 2.0.0-beta`
 
 ## Usage
 
