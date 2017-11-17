@@ -12,6 +12,8 @@ namespace Jakkes.WebSockets.Server
         internal OpCode opCode { get; private set; }
         public MessageType Type { get; private set; }
         public byte[] Data { get; private set; }
+        public Action OnSuccess { get; private set; }
+        public Action OnFail { get; private set;}
 
         /// <summary>
         /// Gets the text contained in the message. Throws if Type is not set to Text.
@@ -27,16 +29,25 @@ namespace Jakkes.WebSockets.Server
             }
         }
         
-        public ServerMessage(string message)
-        {
+
+        public ServerMessage(string message) : this(message, null, null) {}
+        public ServerMessage(string message, Action onSuccess, Action onFail){
             Data = Encoding.UTF8.GetBytes(message);
             opCode = OpCode.TextFrame;
             Type = MessageType.Text;
+
+            OnSuccess = onSuccess;
+            OnFail = onFail;
         }
-        public ServerMessage(byte[] binary)
+        public ServerMessage(byte[] binary) : this(binary, null, null) { }
+        public ServerMessage(byte[] binary, Action onSuccess, Action onFail)
         {
             Data = binary;
             opCode = OpCode.BinaryFrame;
+            Type = MessageType.Binary;
+
+            OnSuccess = onSuccess;
+            OnFail = onFail;
         }
         internal ServerMessage(byte[] data, OpCode opcode)
         {

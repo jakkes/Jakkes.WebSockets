@@ -58,7 +58,11 @@ namespace Jakkes.WebSockets.Server
         }
 
         public void Send(string text) => Send(new ServerMessage(text));
+        public void Send(string text, Action OnSuccess, Action OnFail)
+            => Send(new ServerMessage(text,OnSuccess,OnFail));
         public void Send(byte[] binary) => Send(new ServerMessage(binary));
+        public void Send(byte[] binary, Action OnSuccess, Action OnFail)
+            => Send(new ServerMessage(binary,OnSuccess,OnFail));
         public void Send(ServerMessage msg)
         {
             _queue.Enqueue(msg);
@@ -75,11 +79,10 @@ namespace Jakkes.WebSockets.Server
                 ServerMessage msg = await _queue.DequeueAsync();
                 _writeToStream(msg);
                 MessageSent?.Invoke(this, msg);
+                msg.OnSuccess();
             }
 
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
             Task.Run(() => _sendWorker(cancellationToken));
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
         }
 
         private void _writeToStream(ServerMessage msg)
