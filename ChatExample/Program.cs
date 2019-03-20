@@ -1,5 +1,6 @@
 ﻿using System;
 using Jakkes.WebSockets.Server;
+using Jakkes.WebSockets;
 
 namespace ChatExample
 {
@@ -15,7 +16,7 @@ namespace ChatExample
         {
             client.TextReceived += (o, e) =>
             {
-                Broadcast(e);
+                Broadcast(e.Text);
             };
         }
 

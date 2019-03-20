@@ -1,4 +1,4 @@
-﻿namespace Jakkes.WebSockets.Server
+﻿namespace Jakkes.WebSockets
 {
     internal enum OpCode
     {

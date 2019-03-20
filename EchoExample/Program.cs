@@ -1,5 +1,6 @@
 ﻿using System;
 using Jakkes.WebSockets.Server;
+using Jakkes.WebSockets;
 
 namespace EchoExample
 {
@@ -24,7 +25,7 @@ namespace EchoExample
             client.TextReceived += (o,e) => {
                 Console.WriteLine(e);
                 System.Threading.Thread.Sleep(500);
-                client.Send(e);
+                client.Send(e.Text);
             };
         }
     }

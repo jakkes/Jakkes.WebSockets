@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Jakkes.WebSockets;
 
-namespace Jakkes.WebSockets.Server
+namespace Jakkes.WebSockets
 {
-
-    
-    
-    public class ServerMessage
+    public class Message
     {
         internal OpCode opCode { get; private set; }
         public MessageType Type { get; private set; }
@@ -19,7 +17,7 @@ namespace Jakkes.WebSockets.Server
         /// Gets the text contained in the message. Throws if Type is not set to Text.
         /// </summary>
         /// <exception cref="InvalidTypeException">When Type is not set to Text</exception>
-        public string Message
+        public string Text
         {
             get
             {
@@ -28,10 +26,9 @@ namespace Jakkes.WebSockets.Server
                 return Encoding.UTF8.GetString(Data);
             }
         }
-        
 
-        public ServerMessage(string message) : this(message, null, null) {}
-        public ServerMessage(string message, Action onSuccess, Action onFail){
+        public Message(string message) : this(message, null, null) {}
+        public Message(string message, Action onSuccess, Action onFail){
             Data = Encoding.UTF8.GetBytes(message);
             opCode = OpCode.TextFrame;
             Type = MessageType.Text;
@@ -39,8 +36,8 @@ namespace Jakkes.WebSockets.Server
             OnSuccess = onSuccess;
             OnFail = onFail;
         }
-        public ServerMessage(byte[] binary) : this(binary, null, null) { }
-        public ServerMessage(byte[] binary, Action onSuccess, Action onFail)
+        public Message(byte[] binary) : this(binary, null, null) { }
+        public Message(byte[] binary, Action onSuccess, Action onFail)
         {
             Data = binary;
             opCode = OpCode.BinaryFrame;
@@ -49,11 +46,13 @@ namespace Jakkes.WebSockets.Server
             OnSuccess = onSuccess;
             OnFail = onFail;
         }
-        internal ServerMessage(byte[] data, OpCode opcode)
-        {
+        internal Message(byte[] data, OpCode opcode, Action onSuccess, Action onFail) {
             Data = data;
             opCode = opcode;
+            OnSuccess = onSuccess;
+            OnFail = onFail;
         }
+        internal Message(byte[] data, OpCode opcode) : this(data, opcode, null, null) { }
 
         public enum MessageType
         {

@@ -19,6 +19,8 @@ namespace Jakkes.WebSockets
         private Queue<T> queue = new Queue<T>();
         private Queue<T> prioQueue = new Queue<T>();
 
+        private readonly object _lock = new object();
+
         /// <summary>
         /// Adds an item to the queue.
         /// </summary>
@@ -47,14 +49,13 @@ namespace Jakkes.WebSockets
         /// <returns></returns>
         public async Task<T> DequeueAsync()
         {
-            if (Count > 0)
-                return Dequeue();
-
-            await Task.Run(() =>
-            {
-                WaitHandle.WaitAny(new WaitHandle[] { _prioEnqueued, _normalEnqueued });
+            return await Task.Run(() => {
+                lock(_lock) {
+                    while (Count == 0)
+                        WaitHandle.WaitAny(new WaitHandle[] { _prioEnqueued, _normalEnqueued });
+                    return Dequeue();
+                }
             });
-            return Dequeue();
         }
 
         /// <summary>
@@ -63,11 +64,13 @@ namespace Jakkes.WebSockets
         /// <returns></returns>
         public T Dequeue()
         {
-            if (prioQueue.Count > 0)
-                return prioQueue.Dequeue();
-            else if (queue.Count > 0)
-                return queue.Dequeue();
-            throw new InvalidOperationException();
+            lock (_lock) {
+                if (prioQueue.Count > 0)
+                    return prioQueue.Dequeue();
+                else if (queue.Count > 0)
+                    return queue.Dequeue();
+                throw new InvalidOperationException();
+            }
         }
     }
 }
