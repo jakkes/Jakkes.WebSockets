@@ -21,7 +21,7 @@ namespace Jakkes.WebSockets.Test
             var client = await Connection.ConnectAsync("ws://localhost:10031");
             Assert.Equal(client.State, State.Open);
 
-            Thread.Sleep(1000);
+            await Task.Delay(1000);
 
             client.Close();
             Assert.Equal(client.State, State.Closing);
@@ -34,7 +34,7 @@ namespace Jakkes.WebSockets.Test
             Assert.Equal(client.State, State.Closed);
             Assert.Equal(server.Connections.Count(), 0);
 
-            Utilities.closeServer(server);
+            await Utilities.closeServer(server);
         }
 
         [Fact]
@@ -51,7 +51,7 @@ namespace Jakkes.WebSockets.Test
             for (int i = 0; i < 50; i++) {
                 if (server.State == State.Closed)
                     break;
-                Thread.Sleep(100);
+                await Task.Delay(100);
             }
             Assert.Equal(State.Closed, server.State);
             Assert.Equal(State.Closed, client.State);
@@ -119,14 +119,15 @@ namespace Jakkes.WebSockets.Test
                 }
             }
 
-            while ((DateTime.Now - lastUpdate).TotalSeconds < 2) {
+            lastUpdate = DateTime.Now;
+            while ((DateTime.Now - lastUpdate).TotalSeconds < 5) {
                 await Task.Delay(1000).ConfigureAwait(false);
             }
 
             Assert.All(clientTexts.Values, (bool x) => Assert.True(x));
             Assert.All(serverTexts.Values, (bool x) => Assert.True(x));
 
-            Utilities.closeServer(server);
+            await Utilities.closeServer(server);
         }
 
         [Theory]
@@ -185,14 +186,15 @@ namespace Jakkes.WebSockets.Test
                 }
             }
 
-            while ((DateTime.Now - lastUpdate).TotalSeconds < 2) {
+            lastUpdate = DateTime.Now;
+            while ((DateTime.Now - lastUpdate).TotalSeconds < 5) {
                 await Task.Delay(1000).ConfigureAwait(false);
             }
 
             Assert.All(clientTexts.Values, (bool x) => Assert.True(x));
             Assert.All(serverTexts.Values, (bool x) => Assert.True(x));
 
-            Utilities.closeServer(server);
+            await Utilities.closeServer(server);
         }
     
         [Theory]
@@ -207,11 +209,12 @@ namespace Jakkes.WebSockets.Test
             var msgReceived = new Dictionary<Connection, Dictionary<string, bool>>(clients);
             var msgs = new string[messages];
 
-            var last_update = DateTime.Now;
 
             for (int i = 0; i < messages; i++) {
                 msgs[i] = Utilities.RandomString(bytes);
             }
+
+            var last_update = DateTime.Now;
 
             for (int i = 0; i < clients; i++) {
                 conns[i] = await Connection.ConnectAsync("ws://localhost:" + port);
@@ -231,6 +234,7 @@ namespace Jakkes.WebSockets.Test
 
             await server.FlushAsync();
 
+            last_update = DateTime.Now;
             while ((DateTime.Now - last_update).TotalSeconds < 5) {
                 await Task.Delay(1000);
             }
@@ -239,7 +243,7 @@ namespace Jakkes.WebSockets.Test
                 Assert.All<bool>(dict.Values, (bool x) => Assert.True(x));
             });
 
-            Utilities.closeServer(server);
+            await Utilities.closeServer(server);
         }
     }
 }

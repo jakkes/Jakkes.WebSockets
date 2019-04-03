@@ -36,6 +36,7 @@ namespace Jakkes.WebSockets.Server
         public string Path { get; private set; }
         public int Port { get; private set; }
 
+        public int Count => _connections.Count;
         public IEnumerable<Connection> Connections { get { return _connections.ToArray(); } }
         private HashSet<Connection> _connections = new HashSet<Connection>();
         public WebSocketServer(int port) : this(port, "/") { }
@@ -68,9 +69,9 @@ namespace Jakkes.WebSockets.Server
                 }
 
                 if (timeout > 0) {
-                    Task.Run(() =>
+                    Task.Run(async () =>
                     {
-                        Thread.Sleep(timeout);
+                        await Task.Delay(timeout);
                         if (Connections.Count() > 0)
                             Kill();
                     });
@@ -98,9 +99,11 @@ namespace Jakkes.WebSockets.Server
 
             await Task.WhenAll(tasks);
         }
-        public void RegisterClient(Connection client)
+        internal void RegisterClient(Connection client)
         {
             client.StateChanged += Client_StateChanged;
+            client.TextReceived += Client_TextReceived;
+            client.BinaryReceived += Client_BinaryReceived;
             
             lock (_connections)
                 _connections.Add(client);
@@ -109,6 +112,20 @@ namespace Jakkes.WebSockets.Server
                 ClientConnected?.Invoke(this, new ClientConnectedEventArgs(client));
                 OnClientConnected(client);
             });
+        }
+
+        private void Client_TextReceived(object sender, TextReceivedEventArgs e)
+        {
+            var args = new ServerReceivedTextEventArgs(sender as Connection, e);
+            TextReceived?.Invoke(this, args);
+            OnTextReceived(args);
+        }
+
+        private void Client_BinaryReceived(object sender, BinaryReceivedEventArgs e)
+        {
+            var args = new ServerReceivedBinaryEventArgs(sender as Connection, e);
+            BinaryReceived?.Invoke(this, args);
+            OnBinaryReceived(args);
         }
 
         private void Client_StateChanged(object conn, StateChangedEventArgs args)
@@ -138,6 +155,10 @@ namespace Jakkes.WebSockets.Server
         protected virtual void OnStateChanged(StateChangedEventArgs e) { }
         public event EventHandler<ClientConnectedEventArgs> ClientConnected;
         protected virtual void OnClientConnected(Connection client) { }
+        public event EventHandler<ServerReceivedTextEventArgs> TextReceived;
+        protected virtual void OnTextReceived(ServerReceivedTextEventArgs args) { }
+        public event EventHandler<ServerReceivedBinaryEventArgs> BinaryReceived;
+        protected virtual void OnBinaryReceived(ServerReceivedBinaryEventArgs args) { }
         
     }
 
@@ -149,6 +170,36 @@ namespace Jakkes.WebSockets.Server
         public ClientConnectedEventArgs(Connection client)
         {
             _client = client;
+        }
+    }
+
+    public class ServerReceivedTextEventArgs : EventArgs {
+        private readonly Connection _source;
+        
+        public Connection Source => _source;
+        private readonly string _text;
+        
+        public string Text => _text;
+        
+        public ServerReceivedTextEventArgs(Connection source, TextReceivedEventArgs args)
+        {
+            _source = source;
+            _text = args.Text;
+        }
+    }
+
+    public class ServerReceivedBinaryEventArgs : EventArgs {
+        private readonly Connection _source;
+        
+        public Connection Source => _source;
+        private readonly byte[] _binary;
+        
+        public byte[] Binary => _binary;
+        
+        public ServerReceivedBinaryEventArgs(Connection source, BinaryReceivedEventArgs args)
+        {
+            _source = source;
+            _binary = args.Binary;
         }
     }
 }

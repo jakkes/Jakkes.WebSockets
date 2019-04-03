@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Jakkes.WebSockets;
 using Jakkes.WebSockets.Server;
 using Xunit;
@@ -19,7 +20,7 @@ namespace Jakkes.WebSockets.Test
             Assert.Equal(State.Open, re.State);
             return re;
         }
-        public static void closeServer(WebSocketServer server) {
+        public static async Task closeServer(WebSocketServer server) {
             
             if (server.Connections.Any()) {
                 server.Close();
@@ -28,7 +29,7 @@ namespace Jakkes.WebSockets.Test
                 for (int i = 0; i < 50; i++) {
                     if (server.State == State.Closed)
                         break;
-                    Thread.Sleep(100);
+                    await Task.Delay(100);
                 }
                 Assert.Equal(server.State, State.Closed);
             } else {
